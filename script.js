@@ -1,9 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
   const videoContainer = document.getElementById('videoContainer');
-  const videoFrame = document.getElementById('videoFrame');
+  const iframeA = document.getElementById('iframeA');
+  const iframeB = document.getElementById('iframeB');
   const loadingOverlay = document.getElementById('loadingOverlay');
 
-  // Video IDs
+  // Video IDs & durations (seconds)
   const ACCOMMODATION_VIDEO_ID = '8_poeXZXAz0';
 
   const DAILY_VIDEO_MAP = {
@@ -16,57 +17,67 @@ document.addEventListener('DOMContentLoaded', () => {
     6: { id: 'NORO-QJk-SQ', duration: 37 }    // Saturday
   };
 
-  const ACCOMMODATION_DURATION = 151; // seconds (2 min 31 sec)
+  const ACCOMMODATION_DURATION = 151; // seconds
 
   let hasStarted = false;
+  let currentIframe = 'A';
+
+  let loopTimeoutId = null;  // track timer to clear if needed
 
   function buildYouTubeEmbedURL(videoId) {
-    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0`;
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0`;
   }
 
-  function loadVideo(videoId) {
-    const embedURL = buildYouTubeEmbedURL(videoId);
-    videoFrame.src = embedURL;
-    loadingOverlay.classList.remove('hidden');
+  function switchToVideo(videoId) {
+    const url = buildYouTubeEmbedURL(videoId);
 
-    setTimeout(() => {
-      loadingOverlay.classList.add('hidden');
-    }, 1000);
+    const nextIframe = currentIframe === 'A' ? iframeB : iframeA;
+    const prevIframe = currentIframe === 'A' ? iframeA : iframeB;
+
+    nextIframe.src = url;
+    nextIframe.classList.add('active');
+
+    prevIframe.classList.remove('active');
+    prevIframe.src = '';
+
+    currentIframe = currentIframe === 'A' ? 'B' : 'A';
   }
 
-  function playAccommodationThenDaily() {
+  function playAccommodationThenDailyLoop() {
     console.log("▶️ Playing accommodation video...");
-    loadVideo(ACCOMMODATION_VIDEO_ID);
+    switchToVideo(ACCOMMODATION_VIDEO_ID);
 
-    setTimeout(() => {
-      playDailyVideo();
+    // Clear any existing timeout before setting new one
+    if (loopTimeoutId) clearTimeout(loopTimeoutId);
+
+    loopTimeoutId = setTimeout(() => {
+      playDailyVideoLoop();
     }, ACCOMMODATION_DURATION * 1000);
   }
 
-  function playDailyVideo() {
+  function playDailyVideoLoop() {
     const day = new Date().getDay();
     const daily = DAILY_VIDEO_MAP[day];
 
     if (!daily) {
-      console.error("❌ No video found for today.");
+      console.error("❌ No daily video found for today.");
       return;
     }
 
     console.log(`▶️ Playing today's video: ${daily.id} (${daily.duration} sec)`);
-    loadVideo(daily.id);
+    switchToVideo(daily.id);
 
-    // Stop after video ends
-    setTimeout(() => {
-      console.log("✅ Daily video finished.");
+    if (loopTimeoutId) clearTimeout(loopTimeoutId);
+
+    loopTimeoutId = setTimeout(() => {
+      playAccommodationThenDailyLoop(); // loop back to accommodation
     }, daily.duration * 1000);
   }
 
-  // On user click, start fullscreen and video
   videoContainer.addEventListener('click', async () => {
     if (!hasStarted) {
       hasStarted = true;
 
-      // Request fullscreen
       if (!document.fullscreenElement) {
         const requestFullscreen =
           videoContainer.requestFullscreen ||
@@ -74,16 +85,19 @@ document.addEventListener('DOMContentLoaded', () => {
           videoContainer.msRequestFullscreen;
 
         if (requestFullscreen) {
-          await requestFullscreen.call(videoContainer);
+          try {
+            await requestFullscreen.call(videoContainer);
+          } catch (e) {
+            console.warn('Fullscreen request failed or was denied.', e);
+          }
         }
       }
 
       loadingOverlay.classList.add('hidden');
-      playAccommodationThenDaily();
+      playAccommodationThenDailyLoop();
     }
   });
 
-  // If user switches tab and comes back before daily video plays
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && !hasStarted) {
       loadingOverlay.classList.remove('hidden');
