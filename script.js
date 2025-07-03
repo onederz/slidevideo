@@ -4,17 +4,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loadingOverlay');
 
     // --- Configuration ---
-    // Make sure these Cloudinary URLs are correct and publicly accessible
-    const ACCOMMODATION_VIDEO_PATH = 'https://res.cloudinary.com/dthx12rbs/video/upload/v1750411002/Accommodation_qwd9me.mp4';
+    const VIDEO_BASE_PATH = './videos/';
+    const ACCOMMODATION_VIDEO_FILENAME = 'Accommodation.mp4';
+    const ACCOMMODATION_VIDEO_PATH = VIDEO_BASE_PATH + ACCOMMODATION_VIDEO_FILENAME;
 
     const DAILY_VIDEO_MAP = {
-        0: 'https://res.cloudinary.com/dthx12rbs/video/upload/v1750409629/jl7759exlidggqgoeukv.mp4',    // Sunday video
-        1: 'https://res.cloudinary.com/dthx12rbs/video/upload/v1750409632/kfshyircf4k88gbeabcz.mp4',    // Monday video
-        2: 'https://res.cloudinary.com/dthx12rbs/video/upload/v1750409613/twtnlztswyxur0mhdkku.mp4',    // Tuesday video
-        3: 'https://res.cloudinary.com/dthx12rbs/video/upload/v1750409635/bfc9xdrnreqc7uhjeyzz.mp4', // Wednesday video
-        4: 'https://res.cloudinary.com/dthx12rbs/video/upload/v1750409625/y8kicywwuc5yu3s3k659.mp4',    // Thursday video
-        5: 'https://res.cloudinary.com/dthx12rbs/video/upload/v1750409620/juinn4iz9b8bruxa0vpu.mp4',    // Friday video
-        6: 'https://res.cloudinary.com/dthx12rbs/video/upload/v1750409633/vjo1niemj9beuy4wdkh0.mp4'    // Saturday video
+        0: 'sunday.mp4',
+        1: 'monday.mp4',
+        2: 'tuesday.mp4',
+        3: 'wednesday.mp4',
+        4: 'thursday.mp4',
+        5: 'friday.mp4', // Today is Friday, so this should be the video
+        6: 'saturday.mp4'
     };
 
     // --- State Variables ---
@@ -25,14 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getTodaysMainVideoPath() {
         const now = new Date();
-        const currentDayOfWeek = now.getDay(); // 0 for Sunday, 1 for Monday, etc.
+        const currentDayOfWeek = now.getDay();
         const videoFileName = DAILY_VIDEO_MAP[currentDayOfWeek];
         if (!videoFileName) {
             console.error(`Error: No main video defined for day of week: ${currentDayOfWeek}`);
             return null;
         }
-        // This is the corrected line: videoFileName already contains the full Cloudinary URL
-        return videoFileName;
+        return VIDEO_BASE_PATH + videoFileName;
     }
 
     // Function to handle video loading and playing
@@ -72,17 +72,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         console.log(`[Sequence] Playing daily main video: ${currentDayMainVideoPath}`);
-        // Daily video plays once
-        loadAndPlayVideo(currentDayMainVideoPath, false);
+        // *** THIS IS THE CRITICAL PART: Set loop to FALSE for the daily video ***
+        loadAndPlayVideo(currentDayMainVideoPath, false); // Daily video plays once
 
-        // When the daily video ends, call the function to play Accommodation again
+        // *** When the daily video ends, call the function to play Accommodation again ***
         videoPlayer.onended = playAccommodationVideo;
     }
 
     function playAccommodationVideo() {
         console.log(`[Sequence] Playing Accommodation video: ${ACCOMMODATION_VIDEO_PATH}`);
-        // Accommodation video plays once
-        loadAndPlayVideo(ACCOMMODATION_VIDEO_PATH, false);
+        loadAndPlayVideo(ACCOMMODATION_VIDEO_PATH, false); // Accommodation video plays once
         // When Accommodation video ends, call the function to play the daily video
         videoPlayer.onended = playDailyMainVideo;
     }
@@ -101,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`[CheckAndSwitch] New day or video path detected. Setting up initial sequence.`);
             currentDayMainVideoPath = newMainVideoPath; // Update today's main video path
             lastProcessedDayString = todayString; // Mark this day as processed
-
+            
             // Start the sequence with the Accommodation video for the new day
             playAccommodationVideo();
         } else {
@@ -159,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAndSwitchVideos();
 
     // Set an interval to check for day changes every minute
-    setInterval(checkAndSwitchVideos, 60 * 1000); // Checks every 60 seconds
+    setInterval(checkAndSwitchVideos, 60 * 1000);
 
     // Handle tab visibility changes (e.g., when tab is minimized and reopened)
     document.addEventListener('visibilitychange', () => {
@@ -179,4 +178,58 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Exited fullscreen mode.");
         }
     });
+});
+
+// --- Fullscreen Logic ---
+function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+        if (videoContainer.requestFullscreen) {
+            videoContainer.requestFullscreen();
+        } else if (videoContainer.mozRequestFullScreen) {
+            videoContainer.mozRequestFullScreen();
+        } else if (videoContainer.webkitRequestFullscreen) {
+            videoContainer.webkitRequestFullscreen();
+        } else if (videoContainer.msRequestFullscreen) {
+            videoContainer.msRequestFullscreen();
+        }
+    }
+    
+    // Hide cursor after 2 seconds of inactivity
+    videoContainer.style.cursor = 'none';
+    
+    videoPlayer.play()
+        .then(() => {
+            loadingOverlay.classList.add('hidden');
+        })
+        .catch(error => {
+            console.warn("Manual play attempt failed:", error);
+            loadingOverlay.querySelector('p').textContent = "Could not play. Browser might block. Check console.";
+        });
+}
+
+// --- Event Listeners ---
+videoContainer.addEventListener('mousemove', () => {
+    // Show cursor temporarily on mouse movement
+    videoContainer.style.cursor = 'auto';
+    clearTimeout(window.cursorTimeout);
+    
+    // Hide again after 2 seconds of inactivity
+    window.cursorTimeout = setTimeout(() => {
+        if (document.fullscreenElement) {
+            videoContainer.style.cursor = 'none';
+        }
+    }, 2000);
+});
+
+// Update your existing fullscreenchange listener
+document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement) {
+        console.log("Entered fullscreen mode.");
+        loadingOverlay.classList.add('hidden');
+        videoContainer.style.cursor = 'none'; // Hide cursor immediately
+        videoPlayer.play();
+    } else {
+        console.log("Exited fullscreen mode.");
+        videoContainer.style.cursor = 'auto'; // Restore cursor
+    }
 });

@@ -45,3 +45,10 @@ body, html {
 #loadingOverlay.hidden {
     display: none;
 }
+
+#videoContainer:fullscreen,
+#videoContainer:-webkit-full-screen,
+#videoContainer:-moz-full-screen,
+#videoContainer:-ms-fullscreen {
+    cursor: none;
+}
