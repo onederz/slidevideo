@@ -4,13 +4,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const iframeB = document.getElementById('iframeB');
   const loadingOverlay = document.getElementById('loadingOverlay');
 
-  // ▶️ Intro video (25 sec)
-  const INTRO_VIDEO_ID = 'WqOJmF1QNWA';
-  const INTRO_DURATION = 25; // seconds
+  // ▶️ Extra video (repeat before accommodation each cycle)
+  const EXTRA_VIDEO_ID = 'WqOJmF1QNWA'; // 25 sec video
+  const EXTRA_DURATION = 25;
 
   // Accommodation video
   const ACCOMMODATION_VIDEO_ID = '8_poeXZXAz0';
-  const ACCOMMODATION_DURATION = 151; // seconds
+  const ACCOMMODATION_DURATION = 151;
 
   // Daily videos
   const DAILY_VIDEO_MAP = {
@@ -46,16 +46,16 @@ document.addEventListener('DOMContentLoaded', () => {
     currentIframe = currentIframe === 'A' ? 'B' : 'A';
   }
 
-  // ▶️ Play Intro first, then Accommodation
-  function playIntroThenAccommodation() {
-    console.log("▶️ Playing intro video...");
-    switchToVideo(INTRO_VIDEO_ID);
+  // ▶️ Play Extra video then Accommodation
+  function playExtraThenAccommodation() {
+    console.log("▶️ Playing extra video...");
+    switchToVideo(EXTRA_VIDEO_ID);
 
     if (loopTimeoutId) clearTimeout(loopTimeoutId);
 
     loopTimeoutId = setTimeout(() => {
       playAccommodationThenDailyLoop();
-    }, INTRO_DURATION * 1000);
+    }, EXTRA_DURATION * 1000);
   }
 
   function playAccommodationThenDailyLoop() {
@@ -84,11 +84,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loopTimeoutId) clearTimeout(loopTimeoutId);
 
     loopTimeoutId = setTimeout(() => {
-      playAccommodationThenDailyLoop(); // loop continues
+      playExtraThenAccommodation(); // 👈 loop back to extra video
     }, daily.duration * 1000);
   }
 
-  // ▶️ Start with Intro
+  // ▶️ Start with Extra video
   videoContainer.addEventListener('click', async () => {
     if (!hasStarted) {
       hasStarted = true;
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       loadingOverlay.classList.add('hidden');
-      playIntroThenAccommodation(); // 👈 first video
+      playExtraThenAccommodation(); // 👈 start cycle
     }
   });
 
@@ -119,4 +119,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
 
