@@ -4,9 +4,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const iframeB = document.getElementById('iframeB');
   const loadingOverlay = document.getElementById('loadingOverlay');
 
-  // Video IDs & durations (seconds)
-  const ACCOMMODATION_VIDEO_ID = '8_poeXZXAz0';
+  // ▶️ Intro video (25 sec)
+  const INTRO_VIDEO_ID = 'WqOJmF1QNWA';
+  const INTRO_DURATION = 25; // seconds
 
+  // Accommodation video
+  const ACCOMMODATION_VIDEO_ID = '8_poeXZXAz0';
+  const ACCOMMODATION_DURATION = 151; // seconds
+
+  // Daily videos
   const DAILY_VIDEO_MAP = {
     0: { id: '4JxpwBGKydg', duration: 42 },   // Sunday
     1: { id: '3rlAzIMWUK8', duration: 37 },   // Monday
@@ -17,12 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
     6: { id: 'NORO-QJk-SQ', duration: 37 }    // Saturday
   };
 
-  const ACCOMMODATION_DURATION = 151; // seconds
-
   let hasStarted = false;
   let currentIframe = 'A';
-
-  let loopTimeoutId = null;  // track timer to clear if needed
+  let loopTimeoutId = null;
 
   function buildYouTubeEmbedURL(videoId) {
     return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0`;
@@ -43,11 +46,22 @@ document.addEventListener('DOMContentLoaded', () => {
     currentIframe = currentIframe === 'A' ? 'B' : 'A';
   }
 
+  // ▶️ Play Intro first, then Accommodation
+  function playIntroThenAccommodation() {
+    console.log("▶️ Playing intro video...");
+    switchToVideo(INTRO_VIDEO_ID);
+
+    if (loopTimeoutId) clearTimeout(loopTimeoutId);
+
+    loopTimeoutId = setTimeout(() => {
+      playAccommodationThenDailyLoop();
+    }, INTRO_DURATION * 1000);
+  }
+
   function playAccommodationThenDailyLoop() {
     console.log("▶️ Playing accommodation video...");
     switchToVideo(ACCOMMODATION_VIDEO_ID);
 
-    // Clear any existing timeout before setting new one
     if (loopTimeoutId) clearTimeout(loopTimeoutId);
 
     loopTimeoutId = setTimeout(() => {
@@ -70,10 +84,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (loopTimeoutId) clearTimeout(loopTimeoutId);
 
     loopTimeoutId = setTimeout(() => {
-      playAccommodationThenDailyLoop(); // loop back to accommodation
+      playAccommodationThenDailyLoop(); // loop continues
     }, daily.duration * 1000);
   }
 
+  // ▶️ Start with Intro
   videoContainer.addEventListener('click', async () => {
     if (!hasStarted) {
       hasStarted = true;
@@ -94,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       loadingOverlay.classList.add('hidden');
-      playAccommodationThenDailyLoop();
+      playIntroThenAccommodation(); // 👈 first video
     }
   });
 
@@ -104,3 +119,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
