@@ -23,27 +23,87 @@ document.addEventListener('DOMContentLoaded', () => {
     6: { id: 'NORO-QJk-SQ', duration: 37 }    // Saturday
   };
 
+  // 🎃 Halloween videos (local MP4s)
+  const HALLOWEEN_VIDEOS = [
+    { src: 'Halloweem Party01.mp4' },
+    { src: 'Halloweem Party02.mp4' }
+  ];
+
   let hasStarted = false;
   let currentIframe = 'A';
   let loopTimeoutId = null;
+  let videoElement = null; // 🎥 for local videos
 
   function buildYouTubeEmbedURL(videoId) {
     return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0`;
   }
 
-  function switchToVideo(videoId) {
-    const url = buildYouTubeEmbedURL(videoId);
+  function switchToVideo(videoId, isLocal = false) {
+    // Stop & remove local video if it exists
+    if (videoElement) {
+      videoElement.pause();
+      videoElement.remove();
+      videoElement = null;
+    }
 
     const nextIframe = currentIframe === 'A' ? iframeB : iframeA;
     const prevIframe = currentIframe === 'A' ? iframeA : iframeB;
 
-    nextIframe.src = url;
-    nextIframe.classList.add('active');
+    if (isLocal) {
+      nextIframe.classList.remove('active');
+      prevIframe.classList.remove('active');
+      prevIframe.src = '';
+      nextIframe.src = '';
 
-    prevIframe.classList.remove('active');
-    prevIframe.src = '';
+      // Create and play <video> tag dynamically
+      videoElement = document.createElement('video');
+      videoElement.src = videoId;
+      videoElement.autoplay = true;
+      videoElement.muted = true;
+      videoElement.playsInline = true;
+      videoElement.className = 'active';
+      videoElement.style.width = '100%';
+      videoElement.style.height = '100%';
+      videoElement.style.objectFit = 'cover';
+      videoContainer.appendChild(videoElement);
+    } else {
+      nextIframe.src = buildYouTubeEmbedURL(videoId);
+      nextIframe.classList.add('active');
+      prevIframe.classList.remove('active');
+      prevIframe.src = '';
+      currentIframe = currentIframe === 'A' ? 'B' : 'A';
+    }
+  }
 
-    currentIframe = currentIframe === 'A' ? 'B' : 'A';
+  // 🎃 Check if it’s still Halloween night (Oct 31)
+  function isHalloweenNight() {
+    const now = new Date();
+    return now.getMonth() === 9 && now.getDate() === 31 && now.getHours() < 24;
+  }
+
+  // 🎃 Loop through Halloween videos continuously until midnight
+  function playHalloweenLoop(index = 0) {
+    if (!isHalloweenNight()) {
+      console.log("🎃 Midnight reached — ending Halloween loop");
+      if (videoElement) {
+        videoElement.pause();
+        videoElement.remove();
+      }
+      playExtraThenAccommodation();
+      return;
+    }
+
+    const video = HALLOWEEN_VIDEOS[index];
+    console.log(`🎃 Playing Halloween video ${index + 1}: ${video.src}`);
+    switchToVideo(video.src, true);
+
+    // When the local video finishes, switch to next
+    if (videoElement) {
+      videoElement.onended = () => {
+        const nextIndex = (index + 1) % HALLOWEEN_VIDEOS.length;
+        playHalloweenLoop(nextIndex);
+      };
+    }
   }
 
   // ▶️ Play Extra video then Accommodation
@@ -52,7 +112,6 @@ document.addEventListener('DOMContentLoaded', () => {
     switchToVideo(EXTRA_VIDEO_ID);
 
     if (loopTimeoutId) clearTimeout(loopTimeoutId);
-
     loopTimeoutId = setTimeout(() => {
       playAccommodationThenDailyLoop();
     }, EXTRA_DURATION * 1000);
@@ -63,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
     switchToVideo(ACCOMMODATION_VIDEO_ID);
 
     if (loopTimeoutId) clearTimeout(loopTimeoutId);
-
     loopTimeoutId = setTimeout(() => {
       playDailyVideoLoop();
     }, ACCOMMODATION_DURATION * 1000);
@@ -72,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function playDailyVideoLoop() {
     const day = new Date().getDay();
     const daily = DAILY_VIDEO_MAP[day];
-
     if (!daily) {
       console.error("❌ No daily video found for today.");
       return;
@@ -82,13 +139,12 @@ document.addEventListener('DOMContentLoaded', () => {
     switchToVideo(daily.id);
 
     if (loopTimeoutId) clearTimeout(loopTimeoutId);
-
     loopTimeoutId = setTimeout(() => {
-      playExtraThenAccommodation(); // 👈 loop back to extra video
+      playExtraThenAccommodation();
     }, daily.duration * 1000);
   }
 
-  // ▶️ Start with Extra video
+  // ▶️ Start on click
   videoContainer.addEventListener('click', async () => {
     if (!hasStarted) {
       hasStarted = true;
@@ -98,7 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
           videoContainer.requestFullscreen ||
           videoContainer.webkitRequestFullscreen ||
           videoContainer.msRequestFullscreen;
-
         if (requestFullscreen) {
           try {
             await requestFullscreen.call(videoContainer);
@@ -109,7 +164,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       loadingOverlay.classList.add('hidden');
-      playExtraThenAccommodation(); // 👈 start cycle
+
+      if (isHalloweenNight()) {
+        playHalloweenLoop();
+      } else {
+        playExtraThenAccommodation();
+      }
     }
   });
 
@@ -119,5 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
 
 
