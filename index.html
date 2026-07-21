@@ -1,21 +1,318 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Daily Scheduled Video Player with Smooth YouTube Switch</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Auto‑loop · Direct video · TV fullscreen</title>
+    <style>
+        /* reset & fullscreen base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        /* main container – fills entire viewport */
+        .player-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        /* video element – covers screen, no controls */
+        #tv-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;          /* fills screen, keeps aspect ratio */
+            background: #111;
+            cursor: none;              /* hide cursor */
+            pointer-events: none;      /* prevent accidental clicks / pause */
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        /* invisible overlay – absorbs pointer events */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: transparent;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+
+
+        /* hide scrollbars everywhere */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        * {
+            scrollbar-width: none;
+        }
+
+        /* smart TV & fullscreen optimizations */
+        @media (display-mode: fullscreen) {
+            #tv-video {
+                object-fit: cover;
+            }
+        }
+
+        /* ensure cursor is hidden on all elements */
+        body, .player-wrapper, #tv-video {
+            cursor: none !important;
+        }
+    </style>
 </head>
 <body>
-  <div id="videoContainer">
-    <iframe id="iframeA" allow="autoplay; fullscreen" allowfullscreen></iframe>
-    <iframe id="iframeB" allow="autoplay; fullscreen" allowfullscreen></iframe>
 
-    <div id="loadingOverlay">
-      <p>Click to Start Fullscreen</p>
-    </div>
-  </div>
+<div class="player-wrapper">
+    <!-- single video element – sources will be cycled via JavaScript -->
+    <video id="tv-video"
+           muted
+           playsinline
+           autoplay
+           preload="auto"
+           aria-label="Auto‑loop video player for TV"
+           style="cursor: none; pointer-events: none;">
+        <!-- sources injected dynamically -->
+    </video>
 
-  <script src="script.js"></script>
+    <!-- invisible overlay -->
+    <div class="overlay" aria-hidden="true"></div>
+</div>
+
+<script>
+    (function() {
+        "use strict";
+
+        // ---- YOUR TWO DIRECT VIDEO LINKS (cdn.jumpshare.com) ----
+        const VIDEO_URLS = [
+            "https://cdn.jumpshare.com/preview/gYfgZgiETydtnu_zD00tr5XS5RW1X5qOdwmPyiseZQ5eXlbnckrI0nTdopkBNK39kT-BEdXC6RFe1gcx4rOmddQlboSyYas46wTkuuEqeiolEJVom7a71-b6apsrOeKIyvDJ1-nuR8bF_MCbL__u6Qn5OIaNKem1vg7j4EAi7OM.mp4",
+            "https://cdn.jumpshare.com/preview/ASW8LFTmY74BnMGviimO_VdFqF8I8MbdpXYDpYvo_uxf4K8iz2qUDicIGUI8sh-cm10YXATkEngP5R6pw31F9O4CAD-fAAaCYHhHtseN8Mv5d_QIMXQE3nWwxm7dHpqStlOICxQLmVljo0eVkRFYign5OIaNKem1vg7j4EAi7OM.mp4"
+            
+        ];
+
+        // ---- get video element ----
+        const video = document.getElementById('tv-video');
+        if (!video) return;
+
+        // ---- state ----
+        let currentIndex = 0;
+        let isTransitioning = false;
+
+        // ---- helper: load and play a video ----
+        function loadVideo(index) {
+            if (isTransitioning) return;
+            isTransitioning = true;
+
+            const url = VIDEO_URLS[index];
+            if (!url) {
+                isTransitioning = false;
+                return;
+            }
+
+            // pause current playback
+            video.pause();
+
+            // set new source
+            video.src = url;
+            video.load();
+
+            // ensure muted (autoplay policy)
+            video.muted = true;
+            // loop attribute – we'll manage manually via 'ended' event
+            video.loop = false;
+
+            // attempt to play
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    isTransitioning = false;
+                }).catch(error => {
+                    console.warn('Autoplay prevented, retrying:', error);
+                    // retry after a short delay
+                    setTimeout(() => {
+                        video.muted = true;
+                        video.play().catch(() => {});
+                        isTransitioning = false;
+                    }, 300);
+                });
+            } else {
+                isTransitioning = false;
+            }
+
+            // hide cursor
+            document.body.style.cursor = 'none';
+            video.style.cursor = 'none';
+        }
+
+        // ---- cycle to next video ----
+        function nextVideo() {
+            if (isTransitioning) return;
+            currentIndex = (currentIndex + 1) % VIDEO_URLS.length;
+            loadVideo(currentIndex);
+        }
+
+        // ---- initial load ----
+        loadVideo(0);
+
+        // ---- auto‑loop via 'ended' event ----
+        video.addEventListener('ended', function() {
+            // switch to next video
+            nextVideo();
+        });
+
+        // ---- handle errors: if video fails, try next ----
+        video.addEventListener('error', function(e) {
+            console.warn('Video error, switching to next:', e);
+            // avoid infinite loop if both videos fail
+            setTimeout(() => {
+                nextVideo();
+            }, 500);
+        });
+
+        // ---- if video gets stuck (not playing after 5s), force cycle ----
+        let stuckTimer = null;
+        video.addEventListener('playing', function() {
+            if (stuckTimer) {
+                clearTimeout(stuckTimer);
+                stuckTimer = null;
+            }
+        });
+
+        function checkStuck() {
+            if (video.paused || video.readyState < 2) {
+                console.log('Video appears stuck, forcing cycle');
+                nextVideo();
+            }
+            stuckTimer = null;
+        }
+
+        // start checking after 5 seconds
+        setTimeout(() => {
+            if (video.paused || video.readyState < 2) {
+                checkStuck();
+            }
+        }, 5000);
+
+        // ---- fullscreen request (smart TV / user gesture) ----
+        function requestFullscreen() {
+            const el = document.documentElement;
+            if (el.requestFullscreen) {
+                el.requestFullscreen().catch(() => {});
+            } else if (el.webkitRequestFullscreen) {
+                el.webkitRequestFullscreen();
+            } else if (el.mozRequestFullScreen) {
+                el.mozRequestFullScreen();
+            } else if (el.msRequestFullscreen) {
+                el.msRequestFullscreen();
+            }
+        }
+
+        // ---- hide cursor aggressively ----
+        function hideCursor() {
+            document.body.style.cursor = 'none';
+            video.style.cursor = 'none';
+            document.querySelector('.player-wrapper').style.cursor = 'none';
+        }
+
+        // ---- on any user interaction, try fullscreen and hide cursor ----
+        function onUserInteraction() {
+            requestFullscreen();
+            hideCursor();
+            // ensure video keeps playing
+            if (video.paused) {
+                video.muted = true;
+                video.play().catch(() => {});
+            }
+        }
+
+        // attach events
+        document.addEventListener('click', onUserInteraction);
+        document.addEventListener('touchstart', onUserInteraction);
+        document.addEventListener('keydown', onUserInteraction);
+
+        // also on mouse move, hide cursor
+        document.addEventListener('mousemove', function() {
+            hideCursor();
+        });
+
+        // ---- initial fullscreen attempt after a short delay ----
+        setTimeout(() => {
+            requestFullscreen();
+            hideCursor();
+        }, 800);
+
+        // ---- when window loads, ensure fullscreen and hide cursor ----
+        window.addEventListener('load', function() {
+            requestFullscreen();
+            hideCursor();
+            // ensure video is playing
+            if (video.paused) {
+                video.muted = true;
+                video.play().catch(() => {});
+            }
+        });
+
+        // ---- visibility change: when user comes back, keep playing ----
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                requestFullscreen();
+                hideCursor();
+                if (video.paused) {
+                    video.muted = true;
+                    video.play().catch(() => {});
+                }
+                // if video ended, reload
+                if (video.ended) {
+                    nextVideo();
+                }
+            }
+        });
+
+        // ---- prevent context menu (long press on TV) ----
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        // ---- also prevent any selection ----
+        document.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+        });
+
+        console.log('🎬 Auto‑loop direct video player ready – 2 videos, fullscreen, cursor hidden.');
+        console.log('📹 Videos will cycle automatically when each ends.');
+
+        // ---- expose for debugging ----
+        window.__player = {
+            nextVideo,
+            loadVideo,
+            currentIndex: () => currentIndex,
+            video: video
+        };
+
+    })();
+</script>
+
 </body>
 </html>
