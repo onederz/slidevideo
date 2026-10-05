@@ -1,21 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Daily Scheduled Video Player with Smooth YouTube Switch</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TV Full‑Screen Image · Promotion</title>
+  <style>
+    /* Remove all margins, paddings, and scrollbars */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;          /* no scrollbars */
+      background-color: black;
+      cursor: default;           /* toggled by JS */
+    }
+
+    /* Full‑screen image container */
+    .tv-screen {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: black;
+    }
+
+    /* Image fills the entire screen (preserve aspect ratio, crop if needed) */
+    .tv-screen img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;         /* cover = fill screen, may crop edges */
+      display: block;
+      background: black;
+      outline: none;
+    }
+
+    /* Hide cursor globally when class is applied */
+    .hide-cursor,
+    .hide-cursor * {
+      cursor: none !important;
+    }
+
+    /* Optional: tiny overlay hint – kept minimal (now shows "promotion") */
+    .next-hint {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      color: rgba(255,255,255,0.3);
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      pointer-events: none;
+      z-index: 10;
+      background: rgba(0,0,0,0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: 1px;
+      transition: opacity 0.4s;
+    }
+
+    /* Fade out hint while idle (optional polish) */
+    .hide-cursor .next-hint {
+      opacity: 0;
+    }
+  </style>
 </head>
 <body>
-  <div id="videoContainer">
-    <iframe id="iframeA" allow="autoplay; fullscreen" allowfullscreen></iframe>
-    <iframe id="iframeB" allow="autoplay; fullscreen" allowfullscreen></iframe>
-
-    <div id="loadingOverlay">
-      <p>Click to Start Fullscreen</p>
-    </div>
+  <div class="tv-screen">
+    <!-- Replaced video with image: promotion -->
+    <img id="promotionImage" src="promotion.jfif" alt="Promotion">
   </div>
+  <!-- tiny hint (optional, shows "promotion") -->
+  <div class="next-hint" id="hint"></div>
 
-  <script src="script.js"></script>
+  <script>
+    (function() {
+      // ----------------------------------------------------------------
+      // 1. SINGLE IMAGE – no playlist, just "promotion"
+      // ----------------------------------------------------------------
+      const imageElement = document.getElementById('promotionImage');
+      const hintEl = document.getElementById('hint');
+
+      // Set initial hint (optional)
+      hintEl.textContent = '📸 promotion';
+
+      // ----------------------------------------------------------------
+      // 2. IMAGE ERROR HANDLING (if image fails to load, show a hint)
+      // ----------------------------------------------------------------
+      imageElement.addEventListener('error', (e) => {
+        console.error('Image error:', e);
+        hintEl.textContent = '⚠️ image error – check source';
+        // No fallback playlist – just a visual warning.
+      });
+
+      // ----------------------------------------------------------------
+      // 3. NO AUTOPLAY, NO VIDEO EVENTS – image is static.
+      //    (We removed all video logic, ended events, play promises.)
+      // ----------------------------------------------------------------
+
+      // ================================================================
+      // 4. DOUBLE-CLICK TO TOGGLE FULLSCREEN
+      // ================================================================
+      function toggleFullscreen() {
+        const doc = document;
+        const docEl = doc.documentElement; // full page
+
+        // If already in fullscreen -> exit
+        if (doc.fullscreenElement || doc.webkitFullscreenElement || doc.msFullscreenElement) {
+          if (doc.exitFullscreen) doc.exitFullscreen();
+          else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+          else if (doc.msExitFullscreen) doc.msExitFullscreen();
+          return;
+        }
+
+        // Otherwise request fullscreen
+        if (docEl.requestFullscreen) {
+          docEl.requestFullscreen();
+        } else if (docEl.webkitRequestFullscreen) {
+          docEl.webkitRequestFullscreen();
+        } else if (docEl.msRequestFullscreen) {
+          docEl.msRequestFullscreen();
+        }
+      }
+
+      // Listen for double-click on the whole document
+      document.addEventListener('dblclick', toggleFullscreen);
+
+      // Optional: also allow double-tap on touch devices
+      let lastTap = 0;
+      document.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTap < 300) {
+          // double tap
+          e.preventDefault();
+          toggleFullscreen();
+        }
+        lastTap = now;
+      }, { passive: false });
+
+      // ================================================================
+      // 5. HIDE MOUSE CURSOR AFTER 2 SECONDS OF INACTIVITY
+      // ================================================================
+      let cursorTimer = null;
+      const IDLE_TIME = 2000; // 2 seconds
+
+      function showCursor() {
+        document.body.classList.remove('hide-cursor');
+      }
+
+      function hideCursor() {
+        document.body.classList.add('hide-cursor');
+      }
+
+      function resetCursorTimer() {
+        showCursor();
+        clearTimeout(cursorTimer);
+        cursorTimer = setTimeout(hideCursor, IDLE_TIME);
+      }
+
+      // Events that indicate user activity
+      ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+        document.addEventListener(evt, resetCursorTimer, { passive: true });
+      });
+
+      // Start the timer immediately
+      resetCursorTimer();
+
+      // Safety: if page loses focus, show cursor
+      window.addEventListener('blur', showCursor);
+
+      // ================================================================
+      // 6. HANDLE FULLSCREEN CHANGE (keeps cursor logic consistent)
+      // ================================================================
+      document.addEventListener('fullscreenchange', () => {
+        resetCursorTimer();
+      });
+      document.addEventListener('webkitfullscreenchange', resetCursorTimer);
+      document.addEventListener('msfullscreenchange', resetCursorTimer);
+
+    })();
+  </script>
 </body>
 </html>
