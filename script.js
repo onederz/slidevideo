@@ -4,9 +4,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const iframeB = document.getElementById('iframeB');
   const loadingOverlay = document.getElementById('loadingOverlay');
 
-  // ▶️ Extra video (repeat before accommodation each cycle)
+  // ▶️ Extra video (repeat before promotion each cycle)
   const EXTRA_VIDEO_ID = 'WqOJmF1QNWA'; // 25 sec video
   const EXTRA_DURATION = 25;
+
+  // 🖼️ Promotion image (2 minutes)
+  const PROMOTION_IMAGE_SRC = 'promotion.jfif';
+  const PROMOTION_DURATION = 120; // 2 minutes
 
   // Accommodation video
   const ACCOMMODATION_VIDEO_ID = '8_poeXZXAz0';
@@ -23,98 +27,79 @@ document.addEventListener('DOMContentLoaded', () => {
     6: { id: 'NORO-QJk-SQ', duration: 37 }    // Saturday
   };
 
-  // 🎃 Halloween videos (local MP4s)
-  const HALLOWEEN_VIDEOS = [
-    { src: 'Halloweem Party01.mp4' },
-    { src: 'Halloweem Party02.mp4' }
-  ];
-
   let hasStarted = false;
   let currentIframe = 'A';
   let loopTimeoutId = null;
-  let videoElement = null; // 🎥 for local videos
+  let videoElement = null;      // 🎥 local video (if needed in future)
+  let promotionElement = null;  // 🖼️ promotion image
 
   function buildYouTubeEmbedURL(videoId) {
     return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&showinfo=0`;
   }
 
-  function switchToVideo(videoId, isLocal = false) {
-    // Stop & remove local video if it exists
+  // 🧹 Remove any local video / promo image currently on screen
+  function clearLocalMedia() {
     if (videoElement) {
       videoElement.pause();
       videoElement.remove();
       videoElement = null;
     }
+    if (promotionElement) {
+      promotionElement.remove();
+      promotionElement = null;
+    }
+  }
+
+  function switchToVideo(videoId) {
+    clearLocalMedia();
 
     const nextIframe = currentIframe === 'A' ? iframeB : iframeA;
     const prevIframe = currentIframe === 'A' ? iframeA : iframeB;
 
-    if (isLocal) {
-      nextIframe.classList.remove('active');
-      prevIframe.classList.remove('active');
-      prevIframe.src = '';
-      nextIframe.src = '';
-
-      // Create and play <video> tag dynamically
-      videoElement = document.createElement('video');
-      videoElement.src = videoId;
-      videoElement.autoplay = true;
-      videoElement.muted = true;
-      videoElement.playsInline = true;
-      videoElement.className = 'active';
-      videoElement.style.width = '100%';
-      videoElement.style.height = '100%';
-      videoElement.style.objectFit = 'cover';
-      videoContainer.appendChild(videoElement);
-    } else {
-      nextIframe.src = buildYouTubeEmbedURL(videoId);
-      nextIframe.classList.add('active');
-      prevIframe.classList.remove('active');
-      prevIframe.src = '';
-      currentIframe = currentIframe === 'A' ? 'B' : 'A';
-    }
+    nextIframe.src = buildYouTubeEmbedURL(videoId);
+    nextIframe.classList.add('active');
+    prevIframe.classList.remove('active');
+    prevIframe.src = 'about:blank';
+    currentIframe = currentIframe === 'A' ? 'B' : 'A';
   }
 
-  // 🎃 Check if it’s still Halloween night (Oct 31)
-  function isHalloweenNight() {
-    const now = new Date();
-    return now.getMonth() === 9 && now.getDate() === 31 && now.getHours() < 24;
+  // 🖼️ Show the promotion image for PROMOTION_DURATION seconds
+  function switchToPromotionImage() {
+    clearLocalMedia();
+
+    // Hide both iframes
+    iframeA.classList.remove('active');
+    iframeB.classList.remove('active');
+    iframeA.src = 'about:blank';
+    iframeB.src = 'about:blank';
+
+    promotionElement = document.createElement('img');
+    promotionElement.id = 'promotionImage';
+    promotionElement.src = PROMOTION_IMAGE_SRC;
+    promotionElement.alt = 'Promotion';
+    videoContainer.appendChild(promotionElement);
   }
 
-  // 🎃 Loop through Halloween videos continuously until midnight
-  function playHalloweenLoop(index = 0) {
-    if (!isHalloweenNight()) {
-      console.log("🎃 Midnight reached — ending Halloween loop");
-      if (videoElement) {
-        videoElement.pause();
-        videoElement.remove();
-      }
-      playExtraThenAccommodation();
-      return;
-    }
-
-    const video = HALLOWEEN_VIDEOS[index];
-    console.log(`🎃 Playing Halloween video ${index + 1}: ${video.src}`);
-    switchToVideo(video.src, true);
-
-    // When the local video finishes, switch to next
-    if (videoElement) {
-      videoElement.onended = () => {
-        const nextIndex = (index + 1) % HALLOWEEN_VIDEOS.length;
-        playHalloweenLoop(nextIndex);
-      };
-    }
-  }
-
-  // ▶️ Play Extra video then Accommodation
-  function playExtraThenAccommodation() {
+  // ▶️ Extra video → Promotion image → Accommodation → Daily → repeat
+  function playExtraThenPromotion() {
     console.log("▶️ Playing extra video...");
     switchToVideo(EXTRA_VIDEO_ID);
 
     if (loopTimeoutId) clearTimeout(loopTimeoutId);
     loopTimeoutId = setTimeout(() => {
-      playAccommodationThenDailyLoop();
+      playPromotionThenAccommodation();
     }, EXTRA_DURATION * 1000);
+  }
+
+  // 🖼️ Promotion image for 2 minutes
+  function playPromotionThenAccommodation() {
+    console.log("🖼️ Showing promotion image...");
+    switchToPromotionImage();
+
+    if (loopTimeoutId) clearTimeout(loopTimeoutId);
+    loopTimeoutId = setTimeout(() => {
+      playAccommodationThenDailyLoop();
+    }, PROMOTION_DURATION * 1000);
   }
 
   function playAccommodationThenDailyLoop() {
@@ -140,9 +125,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (loopTimeoutId) clearTimeout(loopTimeoutId);
     loopTimeoutId = setTimeout(() => {
-      playExtraThenAccommodation();
+      playExtraThenPromotion();
     }, daily.duration * 1000);
   }
+
+  // 🖱️ Hide cursor after 2s of inactivity (TV / kiosk friendly)
+  let cursorHideTimeout = null;
+  function scheduleHideCursor() {
+    if (cursorHideTimeout) clearTimeout(cursorHideTimeout);
+    videoContainer.classList.remove('hide-cursor');
+    cursorHideTimeout = setTimeout(() => {
+      videoContainer.classList.add('hide-cursor');
+    }, 2000);
+  }
+
+  // Show cursor on any mouse movement / touch / key, then re-schedule hiding
+  ['mousemove', 'mousedown', 'touchstart', 'keydown'].forEach(evt => {
+    document.addEventListener(evt, scheduleHideCursor, { passive: true });
+  });
+  scheduleHideCursor(); // start hiding right away
 
   // ▶️ Start on click
   videoContainer.addEventListener('click', async () => {
@@ -164,12 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       loadingOverlay.classList.add('hidden');
-
-      if (isHalloweenNight()) {
-        playHalloweenLoop();
-      } else {
-        playExtraThenAccommodation();
-      }
+      playExtraThenPromotion();
     }
   });
 
@@ -179,6 +175,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
-
-
-

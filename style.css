@@ -36,6 +36,17 @@ body, html {
   transition-delay: 0s;
 }
 
+/* 🖼️ Promotion image */
+#promotionImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 2;
+}
+
 #loadingOverlay {
   position: absolute;
   top: 0;
@@ -57,9 +68,18 @@ body, html {
   display: none;
 }
 
+/* 🖱️ Hide cursor in fullscreen */
 #videoContainer:fullscreen,
 #videoContainer:-webkit-full-screen,
 #videoContainer:-moz-full-screen,
 #videoContainer:-ms-fullscreen {
   cursor: none;
+}
+
+/* Fallback for TVs / browsers where :fullscreen cursor:none doesn't work */
+#videoContainer.hide-cursor {
+  cursor: none !important;
+}
+#videoContainer.hide-cursor * {
+  cursor: none !important;
 }
