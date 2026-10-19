@@ -1,14 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
   const videoContainer = document.getElementById('videoContainer');
-  const iframeA = document.getElementById('iframeA');
-  const iframeB = document.getElementById('iframeB');
   const loadingOverlay = document.getElementById('loadingOverlay');
 
   // 🖼️ Promotion image (displayed indefinitely)
   const PROMOTION_IMAGE_SRC = 'promotion.jfif';
 
   let hasStarted = false;
-  let loopTimeoutId = null;
   let promotionElement = null; // 🖼️ promotion image
 
   // 🧹 Remove any local media currently on screen
@@ -22,12 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // 🖼️ Show the promotion image (persists until replaced)
   function showPromotionImage() {
     clearLocalMedia();
-
-    // Hide both iframes
-    iframeA.classList.remove('active');
-    iframeB.classList.remove('active');
-    iframeA.src = 'about:blank';
-    iframeB.src = 'about:blank';
 
     promotionElement = document.createElement('img');
     promotionElement.id = 'promotionImage';
