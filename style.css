@@ -15,27 +15,6 @@ body, html {
   height: 100%;
 }
 
-#iframeA, #iframeB {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-  z-index: 1;
-  visibility: hidden;
-  transition: visibility 0s linear 0.3s, opacity 0.3s linear;
-  opacity: 0;
-}
-
-#iframeA.active,
-#iframeB.active {
-  visibility: visible;
-  opacity: 1;
-  z-index: 2;
-  transition-delay: 0s;
-}
-
 /* 🖼️ Promotion image */
 #promotionImage {
   position: absolute;
